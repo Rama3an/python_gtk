@@ -28,7 +28,7 @@ class MainWindow(Gtk.Window):
 
         self.button_file = Gtk.Button(label="Загрузить из файла")
         self.buttons.append(self.button_file)
-        self.button_file.connect("clicked", self.reading_with_file)
+        self.button_file.connect("clicked", self.run_file)
 
         self.scrollable_treelist = Gtk.ScrolledWindow()
         self.scrollable_treelist.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
@@ -49,31 +49,29 @@ class MainWindow(Gtk.Window):
         self.scrollable_treelist.add(self.treeview)
         self.grid.attach(self.scrollable_treelist, 0, 0, 2, 5)
 
-    @staticmethod
-    def run_download_window():
-        dialog = DownlandWindow()
+    async def run_download_window(self):
+        dialog = DownlandWindow(self)
         dialog.connect("destroy", Gtk.main_quit)
         dialog.show_all()
+        dialog.close()
         Gtk.main()
 
-    def reading_with_file(self, widget):
-        process_down_window = multiprocessing.Process(target=self.run_download_window)
-        process_down_window.start()
+    def run_file(self, widget):
+        asyncio.run(self.async_reading_with_file())
+
+    async def async_reading_with_file(self):
+        await self.run_download_window()
         with open("test_base.csv", "r") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 self.goods_and_price.append([row["Title"], row["Price"]])
-        process_down_window.terminate()
 
     def run_requests_API(self, widget):
-        process_down_window = multiprocessing.Process(target=self.run_download_window)
-        process_down_window.start()
         asyncio.run(self.async_request_API())
-        process_down_window.terminate()
 
     async def async_request_API(self):
+        await self.run_download_window()
         API = ["https://paycon.su/api1.php", "https://paycon.su/api2.php"]
-
         async with aiohttp.ClientSession() as session:
             task = []
             for i in API:
@@ -89,16 +87,15 @@ class MainWindow(Gtk.Window):
             self.goods_and_price.append(row)
 
 
-class DownlandWindow(Gtk.Window):
-    def __init__(self):
-        super().__init__(title="Spinner")
+class DownlandWindow(Gtk.Dialog):
+    def __init__(self, parent):
+        super().__init__(title="Spinner", transient_for=parent, flags=0)
         self.set_default_size(150, 100)
-        self.box = Gtk.Box()
         self.set_border_width(3)
         self.spinner = Gtk.Spinner()
         self.spinner.start()
-        self.box.add(self.spinner)
-        self.add(self.box)
+        self.add(self.spinner)
+        self.show_all()
 
 
 if __name__ == "__main__":
