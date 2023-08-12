@@ -8,9 +8,9 @@ from gi.repository import Gtk
 gi.require_version("Gtk", "3.0")
 
 
-class MyWindow(Gtk.Window):
+class MainWindow(Gtk.Window):
     def __init__(self):
-        super().__init__(title="Hello World")
+        super().__init__(title="Application")
         self.set_size_request(600, 800)
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -57,6 +57,7 @@ class MyWindow(Gtk.Window):
         asyncio.run(self.async_request_API())
 
     async def async_request_API(self):
+
         API = ["https://paycon.su/api1.php", "https://paycon.su/api2.php"]
 
         async with aiohttp.ClientSession() as session:
@@ -74,8 +75,19 @@ class MyWindow(Gtk.Window):
             self.goods_and_price.append(row)
 
 
+class DownlandWindow(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Spinner")
+        self.set_default_size(150, 100)
+        self.set_border_width(3)
+        self.spinner = Gtk.Spinner()
+        self.add(self.spinner)
+        self.show_all()
+        self.connect("destroy", Gtk.main_quit)
+
+
 if __name__ == "__main__":
-    main_window = MyWindow()
+    main_window = MainWindow()
     main_window.connect("destroy", Gtk.main_quit)
     main_window.show_all()
     Gtk.main()
