@@ -3,6 +3,7 @@ import aiohttp
 import re
 import csv
 import gi
+import multiprocessing
 from gi.repository import Gtk
 
 gi.require_version("Gtk", "3.0")
@@ -34,6 +35,7 @@ class MainWindow(Gtk.Window):
         self.scrollable_treelist.set_vexpand(False)
         self.grid.attach(self.buttons[0], 0, 5, 1, 1)
         self.grid.attach(self.buttons[1], 1, 5, 1, 1)
+
         # столбцы
         self.treeview = Gtk.TreeView(model=self.goods_and_price)
         self.renderer_text_goods = Gtk.CellRendererText()
@@ -47,17 +49,29 @@ class MainWindow(Gtk.Window):
         self.scrollable_treelist.add(self.treeview)
         self.grid.attach(self.scrollable_treelist, 0, 0, 2, 5)
 
+    @staticmethod
+    def run_download_window():
+        dialog = DownlandWindow()
+        dialog.connect("destroy", Gtk.main_quit)
+        dialog.show_all()
+        Gtk.main()
+
     def reading_with_file(self, widget):
+        process_down_window = multiprocessing.Process(target=self.run_download_window)
+        process_down_window.start()
         with open("test_base.csv", "r") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 self.goods_and_price.append([row["Title"], row["Price"]])
+        process_down_window.terminate()
 
     def run_requests_API(self, widget):
+        process_down_window = multiprocessing.Process(target=self.run_download_window)
+        process_down_window.start()
         asyncio.run(self.async_request_API())
+        process_down_window.terminate()
 
     async def async_request_API(self):
-
         API = ["https://paycon.su/api1.php", "https://paycon.su/api2.php"]
 
         async with aiohttp.ClientSession() as session:
@@ -79,11 +93,12 @@ class DownlandWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Spinner")
         self.set_default_size(150, 100)
+        self.box = Gtk.Box()
         self.set_border_width(3)
         self.spinner = Gtk.Spinner()
-        self.add(self.spinner)
-        self.show_all()
-        self.connect("destroy", Gtk.main_quit)
+        self.spinner.start()
+        self.box.add(self.spinner)
+        self.add(self.box)
 
 
 if __name__ == "__main__":
