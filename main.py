@@ -1,17 +1,18 @@
 import asyncio
 import aiohttp
+import threading
 import re
 import csv
 import gi
-import multiprocessing
-from gi.repository import Gtk
 
 gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 
 class MainWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Application")
+        self.dialog = None
         self.set_size_request(600, 800)
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -49,28 +50,34 @@ class MainWindow(Gtk.Window):
         self.scrollable_treelist.add(self.treeview)
         self.grid.attach(self.scrollable_treelist, 0, 0, 2, 5)
 
-    async def run_download_window(self):
-        dialog = DownlandWindow(self)
-        dialog.connect("destroy", Gtk.main_quit)
-        dialog.show_all()
-        dialog.close()
+    def run_download_window(self):
+        self.dialog = DownlandWindow(self)
+        self.dialog.spinner.start()
+        self.dialog.show_all()
         Gtk.main()
 
     def run_file(self, widget):
-        asyncio.run(self.async_reading_with_file())
+        thread_reading_file = threading.Thread(target=self.async_reading_with_file)
+        thread_reading_file.start()
+        self.run_download_window()
 
-    async def async_reading_with_file(self):
-        await self.run_download_window()
+    def async_reading_with_file(self):
         with open("test_base.csv", "r") as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
                 self.goods_and_price.append([row["Title"], row["Price"]])
+        while self.dialog is None:
+            pass
+        else:
+            self.dialog.close()
 
     def run_requests_API(self, widget):
-        asyncio.run(self.async_request_API())
+        thread_reading_API = threading.Thread(target=asyncio.run, args=(self.async_request_API(),))
+        thread_reading_API.start()
+        self.run_download_window()
+        #asyncio.run(self.async_request_API())
 
     async def async_request_API(self):
-        await self.run_download_window()
         API = ["https://paycon.su/api1.php", "https://paycon.su/api2.php"]
         async with aiohttp.ClientSession() as session:
             task = []
@@ -85,6 +92,10 @@ class MainWindow(Gtk.Window):
         list_dict_name_price = [(i[0][8:-2].replace('\\', ''), i[1][8:]) for i in zip(result_name, result_price)]
         for row in list_dict_name_price:
             self.goods_and_price.append(row)
+        while self.dialog is None:
+            pass
+        else:
+            self.dialog.close()
 
 
 class DownlandWindow(Gtk.Dialog):
@@ -92,9 +103,10 @@ class DownlandWindow(Gtk.Dialog):
         super().__init__(title="Spinner", transient_for=parent, flags=0)
         self.set_default_size(150, 100)
         self.set_border_width(3)
+        self.box = Gtk.Box()
+        self.add(self.box)
         self.spinner = Gtk.Spinner()
-        self.spinner.start()
-        self.add(self.spinner)
+        self.box.add(self.spinner)
         self.show_all()
 
 
